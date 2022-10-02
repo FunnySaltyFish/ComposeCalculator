@@ -2,6 +2,7 @@ package com.funny.compose.calclator.ui
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.TweenSpec
+import androidx.compose.animation.core.animateIntOffsetAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -81,19 +82,22 @@ fun CalcInput(
     isVertical: Boolean = true,
 ) {
     val vm: CalcViewModel = viewModel()
+    // 每个正方形的宽度
     var l by remember {
         mutableStateOf(0)
     }
     Box(
-        Modifier
+        modifier
             .layout { measurable, constraints ->
                 val w: Int
                 val h: Int
                 if (isVertical) {
+                    // 竖屏的时候宽度固定，计算高度
                     w = constraints.maxWidth
                     l = w / symbols[0].size
                     h = l * symbols.size
                 } else {
+                    // 横屏的时候高度固定，计算宽度
                     h = constraints.maxHeight
                     l = h / symbols.size
                     w = l * symbols[0].size
@@ -198,9 +202,14 @@ fun CalcText(
     }
 }
 
+/**
+ * 纵向布局，先摆放Bottom再摆放，
+ * @param modifier Modifier
+ * @param bottom 底部的Composable，单个
+ * @param other 在它上面的Composable，单个
+ */
 @Composable
 fun SubcomposeBottomFirstLayout(modifier: Modifier, bottom: @Composable () -> Unit, other: @Composable () -> Unit) {
-    val TAG = "BottomFirstLayout"
     SubcomposeLayout(modifier) { constraints: Constraints ->
         var bottomHeight = 0
         val bottomPlaceables = subcompose("bottom", bottom).map {
@@ -208,12 +217,14 @@ fun SubcomposeBottomFirstLayout(modifier: Modifier, bottom: @Composable () -> Un
             bottomHeight = placeable.height
             placeable
         }
-        val h = constraints.maxHeight - bottomHeight //        Log.d(TAG, "SubcomposeBottomFirstLayout: max:${constraints.maxHeight} bh:$bottomHeight")
+        // 计算完底部的高度后把剩余空间给other
+        val h = constraints.maxHeight - bottomHeight
         val otherPlaceables = subcompose("other", other).map {
             it.measure(constraints.copy(minHeight = 0, maxHeight = h))
         }
 
         layout(constraints.maxWidth, constraints.maxHeight) {
+            // 底部的从 h 的高度开始放置
             bottomPlaceables[0].placeRelative(0, h)
             otherPlaceables[0].placeRelative(0, 0)
         }
